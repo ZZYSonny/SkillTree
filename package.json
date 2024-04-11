@@ -1,0 +1,16 @@
+{
+  "name": "skilltree",
+  "version": "1.0.0",
+  "author": "",
+  "description": "",
+  "scripts": {
+    "dev": "esbuild src/main.ts --bundle --outdir=public/js --servedir=public --watch --serve --bundle --sourcemap=inline",
+    "build": "esbuild src/main.ts --bundle --outdir=public/js --bundle --minify"
+  },
+  "dependencies": {
+    "@types/echarts": "^4.9.22",
+    "echarts": "^5.5.0",
+    "esbuild": "^0.20.2",
+    "typescript": "^5.4.5"
+  }
+}
