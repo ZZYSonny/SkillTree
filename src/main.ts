@@ -1,6 +1,6 @@
 import * as echarts from 'echarts';
-import { ISkillSelection, IState, RecordFilter, SkillTreeMap, SkillTreeReduce, StateToString } from './data';
-import { range } from './utils'
+import { ISkillRecord, ISkillSelection, IState, RecordFilter, SkillTreeMap, SkillTreeReduce, StateToString } from './data';
+import { compare, range } from './utils'
 
 const mainChart = echarts.init(document.getElementById("main") as HTMLDivElement);
 const sliderChart = echarts.init(document.getElementById("slider") as HTMLDivElement);
@@ -70,6 +70,7 @@ function echartsSetSunburst(newSelection: ISkillSelection) {
     interface ISunburstData {
         name: string;
         value: number;
+        history: ISkillRecord[];
         children?: ISunburstData[];
     }
     curSelection = newSelection;
@@ -80,6 +81,7 @@ function echartsSetSunburst(newSelection: ISkillSelection) {
             else return {
                 name: leaf.name,
                 value: 1,
+                history: filteredHistory
             }
         },
         (parent, children) => {
@@ -88,12 +90,27 @@ function echartsSetSunburst(newSelection: ISkillSelection) {
             else return {
                 name: parent!.name,
                 value: filteredChildren.reduce((acc, x) => acc + x.value, 0),
-                children: filteredChildren
+                children: filteredChildren,
+                history: []
             }
         },
         (categories) => categories.filter(v => v !== null)
     ) as ISunburstData[];
     mainChart.setOption({
+        tooltip: {
+            trigger: 'item',
+            formatter: (params) => {
+                if(Array.isArray(params)){
+                    return "???"
+                }else{
+                    const data: ISunburstData = params.data;
+                    const header = `${params.marker}<font size="+1"><b>${data.name}</b></font><br>`
+                    const lines = data.history.map(d => `&emsp;&emsp;${d.year}.${d.quarter} ${StateToString(d.state)}`).join("<br>")
+                    return header + lines;
+                }
+                
+            }
+        },
         series: [{
             name: "SkillDisk",
             type: 'sunburst',
@@ -106,12 +123,9 @@ function echartsShouldUpdate(newSelection: ISkillSelection) {
     if(JSON.stringify(curSelection) === JSON.stringify(newSelection)) return false;
     return SkillTreeReduce<boolean>(
         (leaf) => {
-            const newHistory = RecordFilter(curSelection, leaf.history);
-            const oldHistory = RecordFilter(newSelection, leaf.history);
-            if(newHistory.length === 0 && oldHistory.length === 0) return false;
-            if(newHistory.length === 0) return true;
-            if(oldHistory.length === 0) return true;
-            return newHistory[0].state != oldHistory[0].state
+            const oldHistory = RecordFilter(curSelection, leaf.history);
+            const newHistory = RecordFilter(newSelection, leaf.history);
+            return compare(newHistory, oldHistory)
         },
         (parent, children) => children.some(v=>v)
     )
